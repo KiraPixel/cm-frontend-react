@@ -1,0 +1,53 @@
+/* Глобальные переменные для светлой темы */
+:root {
+  --bs-body-bg: #ffffff;
+  --bs-body-color: #212529;
+  --bs-light-bg: #f8f9fa;
+  --bs-light-border: #dee2e6;
+  --bs-card-bg: #ffffff;
+  --bs-card-border-color: rgba(0, 0, 0, 0.175);
+}
+
+/* Глобальные переменные для темной темы */
+[data-bs-theme="dark"] {
+  --bs-body-bg: #212529;
+  --bs-body-color: #dee2e6;
+  --bs-light-bg: #343a40;
+  --bs-light-border: #495057;
+  --bs-card-bg: #2b3035;
+  --bs-card-border-color: #495057;
+
+  .bg-white {
+    background-color: var(--bs-card-bg) !important;
+  }
+  .text-dark {
+    color: var(--bs-body-color) !important;
+  }
+  .list-group-item-action:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+}
+
+body {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  margin: 0;
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+}
+
+/* Кастомный скроллбар */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+[data-bs-theme="dark"] .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}

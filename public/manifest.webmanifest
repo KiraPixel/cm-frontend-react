@@ -1,0 +1,16 @@
+﻿{
+  "name": "Центр Мониторинга",
+  "short_name": "ЦМ",
+  "description": "Центр мониторинга для управления транспортом и оборудованием",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ]
+}

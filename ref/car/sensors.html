@@ -1,0 +1,458 @@
+<div class="tab-pane fade" id="sensors" role="tabpanel" aria-labelledby="sensors-tab">
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body">
+            <button type="button" class="btn btn-primary mb-4" id="refreshSensorsBtn">
+                <i class="bi bi-arrow-repeat me-2"></i>Обновить данные
+            </button>
+
+            <div class="alert alert-info" id="loadingIndicator" style="display: none;">
+                Загрузка данных датчиков...
+            </div>
+
+            <div class="row" id="sensorsContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" charset="utf-8">
+document.addEventListener('DOMContentLoaded', function () {
+    window.addEventListener('carDataLoaded', function() {
+        initializeSensors();
+    });
+
+    document.getElementById('refreshSensorsBtn').addEventListener('click', refreshSensors);
+});
+
+window.axentaSensors = {};
+
+function initializeSensors() {
+    const sensorsContainer = document.getElementById('sensorsContainer');
+    const axentaUnits = window.carData.monitoring.filter(unit => unit.type === 'axenta');
+
+    if (axentaUnits.length === 0) {
+        sensorsContainer.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-warning">Устройства Axenta не найдены</div>
+            </div>`;
+        return;
+    }
+
+    sensorsContainer.innerHTML = '';
+
+    const columnClass = axentaUnits.length === 1 ? 'col-12' : 'col-12 col-md-6';
+
+    Promise.all(axentaUnits.map(unit =>
+        Promise.all([
+            fetch(`/api/axenta/axenta_get_sensors/${unit.unit_id}`).then(response => response.json()),
+            fetch(`/api/axenta/axenta_get_commands/${unit.unit_id}`).then(response => response.json())
+        ]).then(([sensorsList, commandsList]) => ({ unit, sensorsList, commandsList }))
+    ))
+    .then(results => {
+        results.forEach(({ unit, sensorsList, commandsList }) => {
+            window.axentaSensors[unit.unit_id] = sensorsList;
+
+            let unitCard = `
+                <div class="${columnClass} mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5 class="card-title mb-0">${unit.uid || 'Без имени'}</h5>
+                                <span class="badge ${unit.online === 'Online' ? 'bg-success' : 'bg-danger'}">
+                                    ${unit.online}
+                                </span>
+                            </div>
+                            <div class="text-muted small">Последняя связь: ${unit.last_time || '—'}</div>
+                            <br>
+                            <div class="sensors-list" data-unit-id="${unit.unit_id}">
+                                ${sensorsList.length === 0 ? '<p class="text-muted">Датчики отсутствуют</p>' : ''}
+                            </div>`;
+            {% if g.user.role >= 0 %}
+            if (commandsList && commandsList.length > 0) {
+                unitCard += `
+                    <hr class="my-3">
+                    <h6 class="mb-2">Команды</h6>
+                    <div class="btn-group flex-wrap" role="group">`;
+                commandsList.forEach(cmd => {
+                    unitCard += `
+                        <button type="button"
+                                class="btn btn-outline-secondary m-1 command-btn"
+                                data-unit-id="${unit.unit_id}"
+                                data-command="${cmd.params}">
+                            ${cmd.name}
+                            <span class="spinner-border spinner-border-sm ms-2 loading-spinner"
+                                  style="display: none;"
+                                  role="status"
+                                  aria-hidden="true"></span>
+                        </button>`;
+                });
+                unitCard += '</div>';
+            }
+            {% endif %}
+
+            unitCard += `
+                            <hr class="my-3">
+                            <h6 class="mb-2">График датчика</h6>
+                            <div class="row mb-4">
+                                <div class="col-md-4 mb-3">
+                                    <label for="sensorGraphSelect-${unit.unit_id}" class="form-label">Выберите датчик</label>
+                                    <select class="form-select" id="sensorGraphSelect-${unit.unit_id}">
+                                        <option value="">Выберите датчик</option>
+                                        ${sensorsList.map(sensor => {
+                                            return `<option value="${sensor.id}" data-unit-id="${unit.unit_id}">${sensor.name}</option>`;
+                                        }).join('')}
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="sensorGraphDateFrom-${unit.unit_id}" class="form-label">Дата и время от</label>
+                                    <input type="datetime-local" class="form-control" id="sensorGraphDateFrom-${unit.unit_id}" step="1">
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label for="sensorGraphDateTo-${unit.unit_id}" class="form-label">Дата и время до</label>
+                                    <input type="datetime-local" class="form-control" id="sensorGraphDateTo-${unit.unit_id}" step="1">
+                                </div>
+                                <div class="col-md-2 mb-3 align-self-end">
+                                    <button type="button" class="btn btn-primary w-100 sensorGraphFetchDataBtn" data-unit-id="${unit.unit_id}">
+                                        <i class="bi bi-arrow-repeat me-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="alert alert-info sensorGraphLoadingIndicator" id="sensorGraphLoadingIndicator-${unit.unit_id}" style="display: none;">
+                                Загрузка данных...
+                            </div>
+                            <div class="alert alert-danger sensorGraphErrorIndicator" id="sensorGraphErrorIndicator-${unit.unit_id}" style="display: none;"></div>
+                            <div class="card" style="height: 500px;">
+                                <div class="card-body">
+                                    <canvas id="sensorGraphChart-${unit.unit_id}" style="max-height: 500px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+
+            sensorsContainer.innerHTML += unitCard;
+        });
+
+        initializeDynamicDateInputs();
+        refreshSensors();
+        setupCommandButtons();
+        setupGraphButtons();
+    })
+    .catch(error => {
+        sensorsContainer.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">Ошибка загрузки данных Axenta: ${error.message}</div>
+            </div>`;
+    });
+}
+
+function initializeDynamicDateInputs() {
+    const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
+    if (isFirefox) {
+        document.querySelectorAll('#sensors input[type="datetime-local"]').forEach(input => {
+            input.type = "text";
+
+            flatpickr(input, {
+                enableTime: true,
+                time_24hr: true,
+                locale: "ru",
+                dateFormat: "Y-m-d\\TH:i",
+                altInput: true,
+                altFormat: "d.m.Y H:i",
+                minuteIncrement: 1,
+                clickOpens: true,
+                allowInput: true,
+            });
+        });
+    }
+}
+
+function refreshSensors() {
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const axentaUnits = window.carData.monitoring.filter(unit => unit.type === 'axenta');
+
+    loadingIndicator.style.display = 'block';
+
+    const now = Math.floor(Date.now() / 1000);
+    //const start = now - 86400; // Последние 24 часа для надежности
+
+    Promise.all(axentaUnits.map(unit => {
+        const start = unit.last_unix_time
+        return fetch(`/api/axenta/axenta_get_sensor_messages/?object_id=${unit.unit_id}&start=${start}&end=${now}&sort=desc&mode=sensors`)
+            .then(response => response.json())
+            .then(data => ({ unit, data: Array.isArray(data) && data.length > 0 ? data[0].sensors : null }))
+            .catch(error => ({ unit, error }));
+    }))
+    .then(results => {
+        results.forEach(({ unit, data, error }) => {
+            const sensorsListElement = document.querySelector(`.sensors-list[data-unit-id="${unit.unit_id}"]`);
+            if (!sensorsListElement) return;
+
+            const sensorsList = window.axentaSensors[unit.unit_id] || [];
+
+            let sensorsHtml = '';
+            if (error || !data) {
+                sensorsHtml = '<div class="alert alert-danger">Axenta API не вернул последние данные по датчикам. Проверьте настройки датчиков или попробуйте позже</div>';
+            } else {
+                sensorsList.forEach(sensor => {
+                    const key = `sensor__${sensor.id}`;
+                    const value = data[key] !== undefined ? data[key] : 'Н/Д';
+                    const status = sensor.unit || '';
+                    let displayValue = value;
+
+                    if (['ignition_sensor', 'custom_digital_sensor'].includes(sensor.type) && status.includes('/')) {
+                        const parts = status.split('/');
+                        displayValue = (value === 1 ? parts[0].trim() : (parts[1] ? parts[1].trim() : parts[0].trim())) + ` (${value})`;
+                    } else if (status) {
+                        displayValue = `${value} ${status}`;
+                    }
+
+                    sensorsHtml += `
+                        <div class="mb-2 p-2 rounded border">
+                            <strong>${sensor.name}</strong>
+                            <p class="mb-0">Значение:
+                                <span class="sensor-value">${displayValue}</span>
+                            </p>
+                        </div>`;
+                });
+            }
+            sensorsListElement.innerHTML = sensorsHtml;
+        });
+        loadingIndicator.style.display = 'none';
+    })
+    .catch(error => {
+        loadingIndicator.style.display = 'none';
+    });
+}
+
+function setupCommandButtons() {
+    document.querySelectorAll('.command-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const command = this.getAttribute('data-command');
+            const unitId = this.getAttribute('data-unit-id');
+            const spinner = this.querySelector('.loading-spinner');
+
+            spinner.style.display = 'inline-block';
+            this.disabled = true;
+
+            fetch(`/api/axenta/axenta_exec_cmd/${unitId}/${encodeURIComponent(command)}`)
+                .then(response => response.json())
+                .then(data => {
+                    spinner.style.display = 'none';
+                    this.disabled = false;
+
+                    if (data.status === 'sent') {
+                        alert(`Команда "${command}" выполнена успешно`);
+                        refreshSensors();
+                    } else {
+                        alert(`Ошибка выполнения команды: ${data.error || 'Неизвестная ошибка'}`);
+                    }
+                })
+                .catch(error => {
+                    spinner.style.display = 'none';
+                    this.disabled = false;
+                    alert(`Ошибка: ${error.message}`);
+                });
+        });
+    });
+}
+
+function setupGraphButtons() {
+    document.querySelectorAll('.sensorGraphFetchDataBtn').forEach(button => {
+        button.addEventListener('click', function() {
+            const unitId = this.getAttribute('data-unit-id');
+            fetchSensorData(unitId);
+        });
+    });
+}
+
+function fetchSensorData(unitId) {
+    var sensorSelect = document.getElementById(`sensorGraphSelect-${unitId}`);
+    var dateFromInput = document.getElementById(`sensorGraphDateFrom-${unitId}`);
+    var dateToInput = document.getElementById(`sensorGraphDateTo-${unitId}`);
+    var loadingIndicator = document.getElementById(`sensorGraphLoadingIndicator-${unitId}`);
+    var errorIndicator = document.getElementById(`sensorGraphErrorIndicator-${unitId}`);
+
+    var sensorValue = sensorSelect.value;
+    var dateFrom = dateFromInput.value;
+    var dateTo = dateToInput.value;
+
+    var errors = [];
+    if (!sensorValue) errors.push('Датчик не выбран');
+    if (!dateFrom) errors.push('Дата и время начала не выбраны');
+    if (!dateTo) errors.push('Дата и время окончания не выбраны');
+
+    if (errors.length > 0) {
+        errorIndicator.textContent = 'Ошибка валидации: ' + errors.join(', ');
+        errorIndicator.style.display = 'block';
+        return;
+    }
+
+    var timeFrom = Math.floor(new Date(dateFrom).getTime() / 1000);
+    var timeTo = Math.floor(new Date(dateTo).getTime() / 1000);
+
+    if (isNaN(timeFrom) || isNaN(timeTo)) {
+        errorIndicator.textContent = 'Неверный формат даты или времени';
+        errorIndicator.style.display = 'block';
+        return;
+    }
+
+    loadingIndicator.style.display = 'block';
+    errorIndicator.style.display = 'none';
+
+    fetch(`/api/axenta/axenta_get_sensors_by_period/?object_id=${unitId}&start=${timeFrom}&end=${timeTo}&sensors=${sensorValue}`)
+        .then(response => response.json())
+        .then(data => {
+            loadingIndicator.style.display = 'none';
+            if (data.error || !data.series || !data.series[sensorValue]) {
+                errorIndicator.textContent = 'Ошибка загрузки данных: ' + (data.error || 'Нет данных за этот период');
+                errorIndicator.style.display = 'block';
+                return;
+            }
+            buildChart(data.series[sensorValue], sensorValue, sensorSelect.options[sensorSelect.selectedIndex].text, unitId);
+        })
+        .catch(error => {
+            loadingIndicator.style.display = 'none';
+            errorIndicator.textContent = 'Ошибка: ' + error.message;
+            errorIndicator.style.display = 'block';
+        });
+}
+
+function buildChart(sensorData, sensorId, sensorName, unitId) {
+    const rawData = sensorData.data || [];
+
+    if (rawData.length === 0) {
+        const errorIndicator = document.getElementById(`sensorGraphErrorIndicator-${unitId}`);
+        errorIndicator.textContent = 'Нет данных для выбранного датчика';
+        errorIndicator.style.display = 'block';
+        return;
+    }
+
+    // Устанавливаем maxPoints как процент от общего количества данных
+    const totalDataPoints = rawData.length;
+    const maxPoints = Math.max(10, Math.floor(totalDataPoints * 0.1)); // Минимум 10 точек, максимум 10% от всех точек
+
+    // Рассчитываем шаг для агрегации данных
+    const step = Math.ceil(totalDataPoints / maxPoints);
+    const aggregatedData = rawData.filter((_, index) => index % step === 0);
+
+    // Форматируем метки времени
+    const labels = aggregatedData.map(item => {
+        const date = new Date(item[0]);
+        return date.toLocaleString('ru-RU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    });
+
+    const values = aggregatedData.map(item => item[1]);
+
+    // Определяем тип сенсора
+    const sensor = window.axentaSensors[unitId].find(s => s.id == sensorId);
+    const isDigital = sensor && ['ignition_sensor', 'custom_digital_sensor'].includes(sensor.type);
+
+    // Уничтожаем предыдущий график, если он существует
+    const chartInstance = window[`sensorGraphChart-${unitId}`];
+    if (chartInstance instanceof Chart) {
+        chartInstance.destroy();
+    }
+
+    const ctx = document.getElementById(`sensorGraphChart-${unitId}`).getContext('2d');
+    window[`sensorGraphChart-${unitId}`] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: values,
+                borderColor: '#0d6efd',
+                backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 6,
+                stepped: isDigital ? 'middle' : false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let val = context.parsed.y;
+                            if (isDigital && sensor.unit && sensor.unit.includes('/')) {
+                                const parts = sensor.unit.split('/');
+                                val = (val === 1 ? parts[0].trim() : (parts[1] ? parts[1].trim() : parts[0].trim())) + ` (${val})`;
+                            } else if (sensor.unit) {
+                                val = `${val} ${sensor.unit}`;
+                            }
+                            return val;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: '#212529',
+                        maxRotation: 45,
+                        minRotation: 45,
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: '#212529'
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<style>
+.sensors-list .border {
+    transition: all 0.3s ease;
+    border-color: var(--bs-border-color);
+}
+
+.sensors-list .border:hover {
+    border-color: var(--bs-primary);
+    transform: translateY(-2px);
+}
+
+.badge {
+    padding: 0.4em 0.8em;
+}
+
+.command-btn:disabled, .sensorGraphFetchDataBtn:disabled {
+    opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+    .btn-group .btn {
+        width: 100%;
+        margin: 0.5rem 0 !important;
+    }
+}
+
+.card {
+    width: 100%;
+}
+
+.sensorGraphLoadingIndicator, .sensorGraphErrorIndicator {
+    margin-bottom: 1rem;
+}
+
+.sensorGraphAllDataBtn {
+    margin-bottom: 1rem;
+}
+</style>

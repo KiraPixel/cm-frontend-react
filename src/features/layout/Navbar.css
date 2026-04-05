@@ -1,0 +1,87 @@
+﻿.cm-navbar {
+    background: linear-gradient(135deg, rgba(9, 30, 66, 0.08), rgba(16, 185, 129, 0.08)), var(--bs-body-bg);
+    border-bottom: 1px solid rgba(128, 145, 170, 0.24);
+    box-shadow: 0 5px 20px rgba(18, 35, 58, 0.08);
+    padding: 0.65rem 0;
+}
+
+.cm-brand {
+    align-items: center;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.cm-brand-logo {
+    background-color: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.0089);
+    border-radius: 5px;
+    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.10);
+    height: 35px;
+    object-fit: cover;
+    width: 35px;
+}
+
+.cm-nav-links .nav-link {
+    border-radius: 999px;
+    color: var(--bs-body-color);
+    margin: 0 0.2rem;
+    padding: 0.45rem 0.85rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.cm-nav-links .nav-link:hover,
+.cm-nav-links .nav-link:focus-visible {
+    background-color: rgba(13, 110, 253, 0.1);
+    color: var(--bs-emphasis-color);
+}
+
+.cm-nav-links .nav-link.active {
+    background-color: rgba(13, 110, 253, 0.16);
+    color: #0d6efd;
+    font-weight: 600;
+}
+
+.cm-theme-btn,
+.cm-user-menu {
+    border-radius: 999px;
+    padding: 0.4rem 0.7rem;
+}
+
+.cm-theme-btn {
+    color: var(--bs-body-color);
+}
+
+.cm-theme-btn:hover,
+.cm-user-menu:hover {
+    background-color: rgba(13, 110, 253, 0.1);
+}
+
+.cm-navbar-toggler {
+    border-color: rgba(128, 145, 170, 0.5);
+}
+
+[data-bs-theme="dark"] .cm-navbar {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(59, 130, 246, 0.12)), var(--bs-body-bg);
+    border-bottom-color: rgba(136, 153, 172, 0.36);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+[data-bs-theme="dark"] .cm-brand-logo {
+    background-color: #0f1419;
+    border-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 5px 24px rgba(0, 0, 0, 0.5);
+}
+
+[data-bs-theme="dark"] .cm-nav-links .nav-link.active {
+    color: #8ab4ff;
+}
+
+@media (max-width: 991.98px) {
+    .cm-nav-links .nav-link {
+        margin: 0.1rem 0;
+    }
+
+    .cm-nav-actions {
+        margin-top: 0.5rem;
+    }
+}

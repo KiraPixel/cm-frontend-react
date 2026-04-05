@@ -1,0 +1,35 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#0d6efd" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Центр мониторинга</title>
+    <script>
+      (function () {
+        try {
+          var match = document.cookie.match(/(?:^|;\s*)theme=([^;]+)/);
+          var cookieTheme = match ? decodeURIComponent(match[1]) : null;
+          var theme = cookieTheme === "dark" || cookieTheme === "light" ? cookieTheme : "light";
+          document.documentElement.setAttribute("data-bs-theme", theme);
+          document.documentElement.style.colorScheme = theme;
+          document.documentElement.style.backgroundColor = theme === "dark" ? "#212529" : "#ffffff";
+        } catch (e) {
+          document.documentElement.setAttribute("data-bs-theme", "light");
+          document.documentElement.style.colorScheme = "light";
+          document.documentElement.style.backgroundColor = "#ffffff";
+        }
+      })();
+    </script>
+    <!-- Подключаем Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <!-- Подключаем Yandex Maps API -->
+    <script src="https://api-maps.yandex.ru/2.1/?apikey=&lang=ru_RU" type="text/javascript"></script>
+  </head>
+  <body class="d-flex flex-column min-vh-100">
+    <div id="root" class="flex-grow-1"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

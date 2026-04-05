@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cm-frontend-react-service
+  namespace: prd-cm
+spec:
+  selector:
+    app: cm-frontend-react
+  ports:
+    - name: http
+      protocol: TCP
+      port: 32080
+      targetPort: http
+      nodePort: 32080
+  type: NodePort

@@ -1,0 +1,143 @@
+<div class="tab-pane fade" id="alerts" role="tabpanel" aria-labelledby="alerts-tab">
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-body">
+            <div id="alertsInfo"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-3 shadow-lg">
+            <div class="modal-header rounded-top-3">
+                <h5 class="modal-title" id="commentModalLabel">Редактирование комментария</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Автор:</strong> <span id="modalAuthor" class="text-muted"></span> (<span id="modalEditTime" class="text-muted"></span>)</p>
+                <input type="hidden" id="modalCommentId">
+                <p><strong>Комментарий:</strong></p>
+                <textarea id="modalComment" class="form-control" rows="4" required></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" id="saveCommentButton" class="btn btn-primary">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+console.log('Alerts script loaded');
+window.addEventListener('carDataLoaded', function() {
+    console.log('carDataLoaded event received in Alerts');
+    const alertsContainer = document.getElementById('alertsInfo');
+
+    if (window.carData && window.carData.alert && window.carData.alert.length > 0) {
+        let alertsHtml = '<div class="alerts-container"><div class="row row-cols-1 row-cols-md-2 g-4">';
+        window.carData.alert.forEach(item => {
+            alertsHtml += `
+                <div class="col">
+                    <div class="card h-100 border-${item.status === 1 ? 'success' : 'danger'} shadow-sm rounded-3">
+                        <div class="card-header rounded-top-3">
+                            <h5 class="card-title mb-0">${item.localization} ${item.data || '-'}</h5>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between align-items-center">
+                            <small class="text-muted">${item.datetime || '-'}</small>
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-sm p-0 me-2" data-bs-toggle="modal" data-bs-target="#commentModal"
+                                        data-comment="${item.comment || ''}" data-author="${item.comment_editor || ''}"
+                                        data-edit-time="${item.comment_date_time_msk || ''}" data-comment-id="${item.id}"
+                                        title="Редактировать комментарий">
+                                    <i class="bi ${item.comment ? 'bi-chat-right-dots' : 'bi-chat-right'}"></i>
+                                </button>
+                                <span class="badge bg-${item.status === 1 ? 'success' : 'danger'}">
+                                    ${item.status === 1 ? 'Решено' : 'Активно'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        alertsHtml += '</div></div>';
+        alertsContainer.innerHTML = alertsHtml;
+    } else {
+        alertsContainer.innerHTML = '<p class="text-muted text-center">По этой ТС нет уведомлений от виртуального диспетчера</p>';
+    }
+
+    const commentModal = document.getElementById('commentModal');
+    const saveCommentButton = document.getElementById('saveCommentButton');
+
+    commentModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        const commentId = button.getAttribute('data-comment-id');
+        const alertItem = window.carData.alert.find(item => item.id == commentId);
+
+        if (alertItem) {
+            document.getElementById('modalAuthor').textContent = alertItem.comment_editor || 'Неизвестен';
+            document.getElementById('modalEditTime').textContent = alertItem.comment_date_time_msk || '';
+            document.getElementById('modalComment').value = alertItem.comment || '';
+            document.getElementById('modalCommentId').value = commentId;
+        } else {
+            console.error('Alert item not found for ID:', commentId);
+            document.getElementById('modalAuthor').textContent = 'Неизвестен';
+            document.getElementById('modalEditTime').textContent = '';
+            document.getElementById('modalComment').value = '';
+            document.getElementById('modalCommentId').value = '';
+        }
+    });
+
+    saveCommentButton.addEventListener('click', function() {
+        const commentId = document.getElementById('modalCommentId').value;
+        const newComment = document.getElementById('modalComment').value.trim();
+
+        if (!commentId || newComment.length === 0 || newComment.length > 500) {
+            alert('Комментарий не может быть пустым или длиннее 500 символов.');
+            return;
+        }
+
+        fetch('/api/users/edit_alert_comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment_id: commentId, comment: newComment })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'edit_ok') location.reload();
+            else alert('Ошибка сохранения комментария.');
+        })
+        .catch(error => alert('Ошибка при отправке данных: ' + error));
+    });
+});
+</script>
+
+<style>
+.alerts-container {
+    max-height: 600px; /* Adjust height to fit ~5 cards */
+    overflow-y: auto;
+    padding-right: 10px; /* Space for scrollbar */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--bs-gray-300) transparent; /* Firefox */
+}
+
+.alerts-container::-webkit-scrollbar {
+    width: 6px; /* Chrome, Safari, Edge */
+}
+
+.alerts-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.alerts-container::-webkit-scrollbar-thumb {
+    background-color: var(--bs-gray-300);
+    border-radius: 3px;
+}
+
+@media (max-width: 576px) {
+    .alerts-container {
+        max-height: 500px; /* Smaller height for mobile */
+    }
+}
+</style>

@@ -1,0 +1,36 @@
+.maps-page .map-expand-btn {
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="light"] .maps-page .map-expand-btn-active,
+.maps-page .map-expand-btn-active {
+    color: #2f3640;
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+[data-bs-theme="light"] .maps-page .map-expand-btn-active:hover,
+.maps-page .map-expand-btn-active:hover {
+    background-color: #dde2e6;
+    border-color: #c2c9cf;
+}
+
+[data-bs-theme="dark"] .maps-page .map-contrast-btn {
+    --bs-btn-color: #f8f9fa;
+    --bs-btn-border-color: #8f9aa3;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-border-color: #c7cdd2;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-border-color: #d8dde1;
+    background-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-bs-theme="dark"] .maps-page .map-expand-btn {
+    color: #e9ecef;
+}
+
+[data-bs-theme="dark"] .maps-page .map-expand-btn-active {
+    color: #f1f3f5;
+    background-color: #495057;
+    border-color: #6c757d;
+}

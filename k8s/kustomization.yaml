@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: prd-cm
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - deployment.yaml
+  - service.yaml
+commonLabels:
+  app.kubernetes.io/name: cm-frontend-react
+  app.kubernetes.io/part-of: cm
+images:
+  - name: ghcr.io/kirapixel/cm-frontend-react
+    newTag: latest
